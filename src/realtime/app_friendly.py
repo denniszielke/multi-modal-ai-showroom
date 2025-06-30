@@ -6,7 +6,7 @@ from azure.core.credentials import AzureKeyCredential
 from azure.identity import AzureDeveloperCliCredential, DefaultAzureCredential
 from dotenv import load_dotenv
 
-from backend.tools import _get_available_categories_tool_schema, _get_products_by_category_tool_schema, _get_products_tool_schema, _show_product_categories_tool_schema, _show_product_information_tool_schema, _show_product_models_tool_schema, Tool
+from backend.tools import _get_available_categories_tool_schema, _get_product_variants_by_category_tool_schema, _get_product_models_by_variant_schema, _get_products_tool_schema, _show_product_categories_tool_schema, _show_product_information_tool_schema, _show_product_models_tool_schema, Tool
 from backend.rtmt import RTMiddleTier
 
 from reportstore.filedb import FileDBStore
@@ -38,8 +38,6 @@ async def create_app():
     llm_credential = AzureKeyCredential(llm_key) if llm_key else credential
 
     fileDB = FileDBStore()  
-
-    await fileDB.show_product_models("asdf")
     
     app = web.Application()
 
@@ -50,25 +48,24 @@ async def create_app():
         "The user is interesting in buying a kitchen and needs to decide the design, devices and setup for their kitchen.\n"
         "You MUST start the converstation by introducing your self and explain the user that you will be asking questions to help him narrow down their choices.\n"
         "Your first question should be to use the get_available_categories tool to find out possible product categories and related questions that you can use to help the user understand the difference between the cateogires.\n"
-        "You should use get_available_categories tool to retrieve options and help the user understand the available categories.\n"
         "Make sure you use the show_product_categories tool to show the user the available categories and the options you have retrieved from the get_available_categories tool.\n"
-        "If the users asks about product cateogires make sure you use the show_product_categories tool to show the user the available categories and the options you have retrieved from the get_available_categories tool.\n"
-        "Once the user is clear on the product cateogry you should help him to narrow the options for specific product.\n"
+        "If the users asks about product variations for find out about available options for a specific product for example different oven types make sure you use the show_product_information tool to show the user the available variations and the options you have retrieved from the get_product_variants_by_category tool.\n"
+        "Once the user is clear on the product variations you should help him to narrow the options for specific product model by retrieving available product models using the get_product_models_by_variant tool.\n"
         "You should use the get_products_by_category tool to retrieve possible vailable variations for the devices.\n"
-        "You should should use the show_product_models tool to show the user the available product models.\n"
+        "You should should use the show_product_models and show_product_models tool to show the user the available product models.\n"
         "You must engage the user in a friendly conversation, follow his interest and guide the user along while making sure you use the show_product_information and show_product_models tool regularly when the user changes the conversation to a different product. The user will provide the answers to the questions."
     )
     rtmt.tools["get_available_categories"] = Tool(
         schema=_get_available_categories_tool_schema,
         target=lambda args: fileDB.get_available_categories(args),
     )
-    rtmt.tools["get_products_by_category"] = Tool(
-        schema=_get_products_by_category_tool_schema,
-        target=lambda args: fileDB.get_products_by_category(args),
+    rtmt.tools["get_product_variants_by_category"] = Tool(
+        schema=_get_product_variants_by_category_tool_schema,
+        target=lambda args: fileDB.get_product_variants_by_category(args),
     )
-    rtmt.tools["get_products"] = Tool(
-        schema=_get_products_tool_schema,
-        target=lambda args: fileDB.get_products(args),
+    rtmt.tools["get_product_models_by_variant"] = Tool(
+        schema=_get_product_models_by_variant_schema,
+        target=lambda args: fileDB.get_product_models_by_variant(args),
     )
     rtmt.tools["show_product_information"] = Tool(
         schema=_show_product_information_tool_schema,

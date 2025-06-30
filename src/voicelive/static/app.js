@@ -156,8 +156,15 @@ function handleWebSocketMessage(message) {
             if (message.tool_name === 'show_product_information') {
                 const information = JSON.parse(message.tool_result);
                 console.log('Showing product information:', information);
-                var layout = '<div class="product"><h3>' + information.title + '</h3><img src="'+ information.image + '" /><p>' + information.text + '</p></div>'
-                productListDiv.innerHTML = layout;
+                if (information !== null && information.length > 0) {
+                    for (var i = 0; i < information.length; i++) {
+                        var layout = '<div class="product"><h3>' + information[i].title + '</h3><img src="'+ information[i].image + '" /><p>' + information[i].text + '</p></div>';
+                        productListDiv.innerHTML += layout;
+                    }
+                } 
+                if (information !== null && information.title != null) {
+                    productListDiv.innerHTML = '<div class="product"><h3>' + information.title + '</h3><img src="'+ information.image + '" /><p>' + information.text + '</p></div>'
+                }
             }
             if (message.tool_name === 'show_product_categories') {
                 const information = JSON.parse(message.tool_result);

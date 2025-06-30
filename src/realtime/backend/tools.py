@@ -38,6 +38,71 @@ class RTToolCall:
         self.previous_id = previous_id
 
 
+_get_available_locations_tool_schema = {
+    "type": "function",
+    "name": "get_available_locations",
+    "description": "Search the location database for possible car pickup locations. The knowledge base is in English, translate to and from English if " + \
+                   "needed. Results are returned in JSON format with a set of metadata that might help the user understand the available options with location, distance and opening hours",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "prefered_location": {
+                "type": "string",
+                "description": "The user prefered pickup location."
+            }
+        },
+        "required": ["prefered_location"],
+        "additionalProperties": False
+    }
+}
+
+_show_final_details_tool_schema = {
+    "type": "function",
+    "name": "show_final_details",
+    "description": "Shows the user the final details of the car rental including pickup location, car model, pickup and return date.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "pickup_location": {
+                "type": "string",
+                "description": "The pickup location selected by the user."
+            },
+            "car_model": {
+                "type": "string",
+                "description": "The car model selected by the user."
+            },
+            "pickup_date": {
+                "type": "string",
+                "description": "The pickup date selected by the user."
+            },
+            "return_date": {
+                "type": "string",
+                "description": "The return date selected by the user."
+            }
+        },
+        "required": ["pickup_location", "car_model", "pickup_date", "return_date"],
+        "additionalProperties": False
+    }
+}
+
+_get_available_models_tool_schema = {
+    "type": "function",
+    "name": "get_available_cars",
+    "description": "Search the model database for possible car models. The knowledge base is in German, translate to and from German if " + \
+                   "needed. Results are returned in JSON format with a set of metadata that might help the user understand the available options with name, image, price and available seats.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "prefered_location": {
+                "type": "string",
+                "description": "The user prefered pickup location."
+            }
+        },
+        "required": ["prefered_location"],
+        "additionalProperties": False
+    }
+}
+
 _get_available_categories_tool_schema = {
     "type": "function",
     "name": "get_available_categories",
@@ -56,10 +121,10 @@ _get_available_categories_tool_schema = {
     }
 }
 
-_get_products_by_category_tool_schema = {
+_get_product_variants_by_category_tool_schema = {
     "type": "function",
-    "name": "get_products_by_category",
-    "description": "Search the product database for a set of products in a specified category. The knowledge base is in English, translate to and from English if " + \
+    "name": "get_product_variants_by_category",
+    "description": "Search the product database for a set of product variants in a specified category. The knowledge base is in English, translate to and from English if " + \
                    "needed. Results are returned in JSON format with a set of product names, description and image each.",
     "parameters": {
         "type": "object",
@@ -70,6 +135,24 @@ _get_products_by_category_tool_schema = {
             }
         },
         "required": ["category"],
+        "additionalProperties": False
+    }
+}
+
+_get_product_models_by_variant_schema = {
+    "type": "function",
+    "name": "get_product_models_by_variant",
+    "description": "Search the product database for a set of products of a specific variant. The knowledge base is in English, translate to and from English if " + \
+                   "needed. Results are returned in JSON format with a set of product names, description and image each.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "category": {
+                "type": "string",
+                "description": "The name of the product variant."
+            }
+        },
+        "required": ["variant"],
         "additionalProperties": False
     }
 }

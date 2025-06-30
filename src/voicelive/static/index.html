@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure OpenAI Realtime Session</title>
+</head>
+<body>
+    <h1>Azure OpenAI Realtime Session</h1>
+    <button onclick="StartSession()">Start Session</button>
+
+    <div id="contextInfo" class="card-body">
+        <p class="card-text">Context information will be displayed here.</p>
+    </div>
+    <!-- Log container for API messages -->
+    <div id="logContainer"></div> 
+
+    <script>
+
+        // Make sure the WebRTC URL region matches the region of your Azure OpenAI resource.
+        // For example, if your Azure OpenAI resource is in the swedencentral region,
+        // the WebRTC URL should be https://swedencentral.realtimeapi-preview.ai.azure.com/v1/realtimertc.
+        // If your Azure OpenAI resource is in the eastus2 region, the WebRTC URL should be https://eastus2.realtimeapi-preview.ai.azure.com/v1/realtimertc.
+        const WEBRTC_URL= "https://swedencentral.realtimeapi-preview.ai.azure.com/v1/realtimertc"
+
+        // The SESSIONS_URL includes the Azure OpenAI resource URL,
+        // deployment name, the /realtime/sessions path, and the API version.
+        // The Azure OpenAI resource region isn't part of the SESSIONS_URL.
+        const SESSIONS_URL="https://foundryuaai.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview"
+
+        // The API key of the Azure OpenAI resource.
+        const API_KEY = "FqTs8oWhLjzY8HqpWeSTSoiBxelX44PFxMjNgyEVnlocmMUMN2I6JQQJ99BFACfhMk5XJ3w3AAAAACOGKpwm"; 
+
+        // The deployment name might not be the same as the model name.
+        const DEPLOYMENT = "gpt-4o-mini-realtime-preview"
+		const VOICE = "verse"
+
+        function clearAllActivities() {    
+            const activityContainer = document.getElementById("contextInfo");
+            while (activityContainer.firstChild) {
+                activityContainer.removeChild(activityContainer.firstChild);
+            }
+        }
+
+        function addSearchInProgressActivity() {
+            const activityContainer = document.getElementById("contextInfo");
+            const activity = document.createElement("p");
+            activity.className = "card-text";
+            activity.innerHTML = "<strong>Searching...</strong>";
+            activityContainer.appendChild(activity);
+        }
+
+        function addSearchResultActivity(sourcePath, content) {
+            const activityContainer = document.getElementById("contextInfo");
+            const titleBlock = document.createElement("p");
+            titleBlock.className = "card-text";
+            titleBlock.innerHTML = `<strong>Search Result from ${sourcePath}:</strong>`;
+            activityContainer.appendChild(titleBlock);
+
+            const contentBlock = document.createElement("p");
+            contentBlock.className = "card-text";
+            contentBlock.innerHTML = content;
+            activityContainer.appendChild(contentBlock);
+        }
+
+
+        function showHtmlElement(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style.display = "block";
+            }
+        }
+
+        function hideHtmlElement(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style.display = "none";
+            }
+        }
+
+        async function StartSession() {
+            try {
+
+                // WARNING: Don't use this code sample in production
+                // with the API key hardcoded. 
+                // Use a protected backend service to call the 
+                // sessions API and generate the ephemeral key.
+                // Then return the ephemeral key to the client.
+
+                const response = await fetch(SESSIONS_URL, {
+                    method: "POST",
+                    headers: {
+                        //"Authorization": `Bearer ${ACCESS_TOKEN}`,
+                        "api-key": API_KEY,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: DEPLOYMENT,
+                        voice: VOICE
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed`);
+                }
+
+                const data = await response.json();
+
+                const sessionId = data.id;
+                const ephemeralKey = data.client_secret?.value; 
+                console.error("Ephemeral key:", ephemeralKey);
+
+                // Mask the ephemeral key in the log message.
+                logMessage("Ephemeral Key Received: " + "***");
+		        logMessage("WebRTC Session Id = " + sessionId );
+
+                // Set up the WebRTC connection using the ephemeral key.
+                init(ephemeralKey); 
+
+            } catch (error) {
+                console.error("Error fetching ephemeral key:", error);
+                logMessage("Error fetching ephemeral key: " + error.message);
+            }
+        }
+
+        async function doSearch(item) {
+            logMessage("Searching information...");
+            clearAllActivities();
+            addSearchInProgressActivity();
+
+            const response = await fetch("/api/search", {
+                method: "POST",
+                body: item.arguments,
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+            if (response.ok) {                    
+                const searchResult = await response.json();
+                logMessage(searchResult);
+                clearAllActivities();
+                
+                if (searchResult && searchResult.length > 0) {
+                    searchResult.forEach((item) => {
+                        addSearchResultActivity(item.sourcePage, item.content);
+                    });
+                }
+                
+                const chatResponse = {
+                    type: "conversation.item.create",
+                    item: {
+                        type: "function_call_output",
+                        call_id: item.call_id,
+                        output: JSON.stringify(searchResult)
+                    }
+                };                
+                window.dataChannel.send(JSON.stringify(chatResponse));
+
+                setTimeout(() => {
+                    window.dataChannel.send(JSON.stringify({
+                        type: "response.create"
+                    }));
+                }, 100);    
+            }
+        }
+
+        async function getReportFields(item) {
+            logMessage("Getting report information...");
+            clearAllActivities();
+            addSearchInProgressActivity();
+            
+            const response = await fetch("/api/report", {
+                method: "POST",
+                body: item.arguments,
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+            if (response.ok) {                    
+                const searchResult = await response.json();
+                logMessage(searchResult);
+                clearAllActivities();
+                
+                if (searchResult && searchResult.length > 0) {
+                    searchResult.forEach((item) => {
+                        addSearchResultActivity(item.sourcePage, item.content);
+                    });
+                }
+                
+                const chatResponse = {
+                    type: "conversation.item.create",
+                    item: {
+                        type: "function_call_output",
+                        call_id: item.call_id,
+                        output: JSON.stringify(searchResult)
+                    }
+                };                
+                window.dataChannel.send(JSON.stringify(chatResponse));
+
+                setTimeout(() => {
+                    window.dataChannel.send(JSON.stringify({
+                        type: "response.create"
+                    }));
+                }, 100);    
+            }
+        }
+
+        async function submitreport(realtimeEvent) {
+            logMessage("Submitting report...");
+            clearAllActivities();
+            console.log("Submitting report with data:", realtimeEvent);
+
+            
+        }
+
+        async function init(ephemeralKey) {
+
+            let peerConnection = new RTCPeerConnection();
+
+            // Set up to play remote audio from the model.
+            const audioElement = document.createElement('audio');
+            audioElement.autoplay = true;
+            document.body.appendChild(audioElement);
+
+            peerConnection.ontrack = (event) => {
+                audioElement.srcObject = event.streams[0];
+            };
+
+            // Set up data channel for sending and receiving events
+            const clientMedia = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioTrack = clientMedia.getAudioTracks()[0];
+            peerConnection.addTrack(audioTrack);
+
+            const dataChannel = peerConnection.createDataChannel('realtime-channel');
+
+            dataChannel.addEventListener('open', () => {
+                logMessage('Data channel is open');
+                updateSession(dataChannel);
+            });
+
+            dataChannel.addEventListener('message', (event) => {
+                const realtimeEvent = JSON.parse(event.data); 
+                console.log(realtimeEvent); 
+                logMessage("Received server event: " + JSON.stringify(realtimeEvent, null, 2));
+                if (realtimeEvent.type === "session.update") {
+                    const instructions = realtimeEvent.session.instructions;
+                    logMessage("Instructions: " + instructions);
+                } else if (realtimeEvent.type === "session.error") {
+                    logMessage("Error: " + realtimeEvent.error.message);
+                } else if (realtimeEvent.type === "session.end") {
+                    logMessage("Session ended.");
+                } else if (realtimeEvent.type === "session.message") {
+                    logMessage("Message: " + realtimeEvent.message);
+                } else if (realtimeEvent.type === "response.done") {
+                    logMessage("Message: " + realtimeEvent.message);
+                } else if (realtimeEvent.type === "response.output_item.done") {
+                    if (realtimeEvent.item && realtimeEvent.item.type === "function_call") {
+                        const item = realtimeEvent.item;
+                        if (item.name === "search") {                
+                            doSearch(item);
+                        }else if (item.name === "get_report_fields") {
+                            logMessage("Getting report information...");
+                            clearAllActivities();
+                            addSearchInProgressActivity();
+                            
+                            const response = fetch("/api/report", {
+                                method: "POST",
+                                body: item.arguments,
+                                headers: {
+                                    "Content-Type": "application/json"
+                                }
+                            });
+                            if (response.ok) {                    
+                                const searchResult = response.json();
+                                logMessage(searchResult);
+                                clearAllActivities();
+                                
+                                if (searchResult && searchResult.length > 0) {
+                                    searchResult.forEach((item) => {
+                                        addSearchResultActivity(item.sourcePage, item.content);
+                                    });
+                                }
+                                
+                                const chatResponse = {
+                                    type: "conversation.item.create",
+                                    item: {
+                                        type: "function_call_output",
+                                        call_id: item.call_id,
+                                        output: JSON.stringify(searchResult)
+                                    }
+                                };                
+                                window.dataChannel.send(JSON.stringify(chatResponse));
+
+                                setTimeout(() => {
+                                    window.dataChannel.send(JSON.stringify({
+                                        type: "response.create"
+                                    }));
+                                }, 100);    
+                            }
+                        }else if (item.name === "submit_report") {
+                            submitreport(item);
+                        } else {
+                            logMessage("Unknown function call: " + item.name);
+                        }
+                    }
+                } else {
+                    logMessage("Unknown event type: " + realtimeEvent.type);
+                }
+            });
+
+            dataChannel.addEventListener('close', () => {
+                logMessage('Data channel is closed');
+            });
+
+	          // Start the session using the Session Description Protocol (SDP)
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            const sdpResponse = await fetch(`${WEBRTC_URL}?model=${DEPLOYMENT}`, {
+                method: "POST",
+                body: offer.sdp,
+                headers: {
+                    Authorization: `Bearer ${ephemeralKey}`,
+                    "Content-Type": "application/sdp",
+                },
+            });
+
+            const answer = { type: "answer", sdp: await sdpResponse.text() };
+            await peerConnection.setRemoteDescription(answer);
+
+            const button = document.createElement('button');
+            button.innerText = 'Close Session';
+            button.onclick = stopSession;
+            document.body.appendChild(button);
+
+            // Send a client event to update the session
+            function updateSession(dataChannel) {
+                const event = {
+                    type: "session.update",
+                    session: {
+                        instructions: "You are a helpful AI assistant responding in natural, engaging language. You should help the user to fill in their report after doing their work in a lab. First ask the user for the name of the report they need to fill out, then use the get_report_fields function to retrieve the fields for the report. Validate each response given by the user with the report metadata. If a user value does not seem right ask the user for help to fix the mistake. Finally, help the user fill out the report with the information gathered and once this is one submit the report with all fields using the submit_report function.",
+                        tools: [{
+                        type: "function",
+                        name: "search",
+                        description: "Search enterprise information",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                searchKey: {
+                                    type: "string",
+                                    description: "Search Key or phrase"
+                                }
+                            },
+                            required: ["searchKey"]
+                        }
+                    },
+                    {
+                        type: "function",
+                        name: "get_report_fields",
+                        description: "Retrieve the fields for a report to be filled out by the user",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                reportKey: {
+                                    type: "string",
+                                    description: "report description or name"
+                                }
+                            },
+                            required: ["reportKey"]
+                        }
+                    },
+                    {
+                        type: "function",
+                        name: "submit_report",
+                        description: "Submit the report with the information gathered",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                fields: {
+                                    type: "array",
+                                    description: "The fields to be submitted in the report. the value should be a notion of fieldname: fieldvalue",
+                                    items: {
+                                        type: "string"
+                                    }
+                                }
+                            },
+                            required: ["fields"]
+                        }
+                    }],
+                    tool_choice: "auto"
+                    }
+                };
+                dataChannel.send(JSON.stringify(event));
+                logMessage("Sent client event: " + JSON.stringify(event, null, 2));
+            }
+
+            function stopSession() {
+                if (dataChannel) dataChannel.close();
+                if (peerConnection) peerConnection.close();
+                peerConnection = null;
+                logMessage("Session closed.");
+            }
+
+        }
+
+        function logMessage(message) {
+            const logContainer = document.getElementById("logContainer");
+            const p = document.createElement("p");
+            p.textContent = message;
+            logContainer.appendChild(p);
+        }
+    </script>
+</body>
+</html>

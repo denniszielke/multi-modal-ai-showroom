@@ -1,0 +1,5 @@
+# Requirements for Azure OpenAI Image Generation
+# These dependencies are already available in the main project's requirements.txt
+azure-identity>=1.19.0
+openai>=1.59.3
+python-dotenv>=1.0.1

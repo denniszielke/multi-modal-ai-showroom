@@ -1,6 +1,7 @@
 body {
     font-family: 'Open Sans', Arial, sans-serif;
-    background-image: url('/static/abstract.jpg');
+    /* background-image: url('https://media.miele.com/images/2000018/200001823/20000182373.png'); */
+    background-image: url('https://www.bmw.de/content/dam/bmw/marketDE/bmw_de/Error%20Page%20Image/errorpage_1680x756.jpg/jcr:content/renditions/cq5dam.resized.img.1680.large.time1525419432428.jpg');
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
@@ -16,6 +17,7 @@ main.container {
     flex-direction: column;
     justify-content: center;
     min-height: 100vh;
+    max-width: 800px;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -24,7 +26,7 @@ article {
     background-color: rgba(255, 255, 255, 0.8);
     padding: 2rem;
     border-radius: 10px;
-    max-width: 600px;
+    max-width: 750px;
     margin: 0 auto;
 }
 
@@ -43,7 +45,7 @@ h4 {
 
 #productList {
     background-color: whitesmoke;
-    display:box;;
+    display:box;
 }
 
 .product {
