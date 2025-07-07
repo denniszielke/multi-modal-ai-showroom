@@ -40,7 +40,7 @@ class AzureImageGenerator:
     
     def _setup_authentication(self):
         """Setup authentication using the same pattern as other modules."""
-^        self.endpoint = os.environ.get("AZURE_IMAGE_GENERATE_ENDPOINT")
+        self.endpoint = os.environ.get("AZURE_IMAGE_GENERATE_ENDPOINT")
         self.api_key = os.environ.get("AZURE_API_KEY")
         self.api_version = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-04-01-preview")
         self.deployment_name = os.environ.get("AZURE_OPENAI_IMAGE_DEPLOYMENT_NAME", "gpt-image-1")
@@ -114,10 +114,10 @@ class AzureImageGenerator:
         if not prompt:
             raise ValueError("Prompt cannot be empty")
         
-        if size not in ["256x256", "512x512", "1024x1024", "1792x1024", "1024x1792"]:
+        if size not in ["1024x1024", "1536x1024", "1024x1792"]:
             raise ValueError(f"Invalid size: {size}")
         
-        if quality not in ["standard", "hd", "medium"]:
+        if quality not in ["low", "high", "medium"]:
             raise ValueError(f"Invalid quality: {quality}")
         
         if output_format not in ["png", "jpeg"]:
@@ -190,16 +190,33 @@ def main():
         generator = AzureImageGenerator()
         
         # Generate image with the same parameters as the curl example
-        prompt = "I need clear and detailes images for my car rental company. There should not be any visible brand signs on the car but a clear depication of the core property of the car category on a transparent background. The car should be from a recent generation and should not be a specific model. I need An open-top electric roadster with exhilarating acceleration and a minimalist interior focused on the driving experience."
+        prompt = """I need a visualization for my keynote presentation that should be clear and focused on the topic of AI"
+        Make the picture in the style of minecraft with bright colorfull blocks and make sure that the picture has a transparent background .
+        I need to demonstrate how retrievel augmented generation works in a clear and focused way.
+        The picture should have a white background and be in the style of minecraft with bright colorfull
+        There should be library of books that represent embeded knowledge in a vector store with a big sign that says "Vector Store" in the front.
+        There should be an AI agent that is searching throught the library with a magnifying glass and a big sign that says "AI Agent" in the front.        
+        On the other side of the picture should be a connected spiderweb of knowledge with a big sign that says "Knowledge Graph" in the front, which should create a connection between the library and the memory.
+        There should be another component says "Memory" consisting of domain specific knowledge in the front.
+        There should be another component that structured data in the form of a table with a big sign that says "Structured Data" in the as a relational sql database, crm system or api.
+        The picture should have a white background and be in the style of minecraft with bright colorfull blocks.
+        in the knowledge graph there should be a link between different object types that should be represented in pictures like glue, chemical glass, speedometer, a lab machine, a customer record of orders, a customer record of payments, a customer record of complaints, a customer record of feedback, a customer record of reviews, a customer record of ratings, a customer record of preferences, a customer record of demographics, a customer record of behavior, a customer record of interactions, a customer record of transactions, a customer record of history, a customer record of relationships, a customer record of connections, a customer record of networks, a customer record of communities, a customer record of groups, a customer record of organizations, a customer record of affiliations, a customer record of memberships, a customer record of subscriptions, and a big sign that says "Customer Record" in the front.
+        """
         image_bytes = generator.generate_image(
             prompt=prompt,
-            size="1024x1024",
-            quality="medium",
+            size="1536x1024", #"1024x1024",
+            quality="high",
             output_compression=100,
             output_format="png",
             n=1
         )
         
+        #  I want to demonstrate how the first iteration of a newly invented car looks like a carriage. 
+        # Create a picture of a car that looks like a carriage with wheels and but no horse in the front and a driver in the front seat high up very far in the front and a backseat for passengers. 
+        # Make sure that the car property is clearly visible with distinctive car attributes like engine, exhaust, crank for starting the engine but no horse.
+        # the picture should have a white background and be in the style of minecraft with bright colorfull blocks.
+
+
         if image_bytes:
             # Save the image
             output_file = "generated_image.png"

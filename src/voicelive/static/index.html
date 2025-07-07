@@ -29,7 +29,7 @@
         const SESSIONS_URL="https://foundryuaai.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview"
 
         // The API key of the Azure OpenAI resource.
-        const API_KEY = "FqTs8oWhLjzY8HqpWeSTSoiBxelX44PFxMjNgyEVnlocmMUMN2I6JQQJ99BFACfhMk5XJ3w3AAAAACOGKpwm"; 
+        const API_KEY = ""; 
 
         // The deployment name might not be the same as the model name.
         const DEPLOYMENT = "gpt-4o-mini-realtime-preview"
@@ -123,12 +123,12 @@
             }
         }
 
-        async function doSearch(item) {
-            logMessage("Searching information...");
+        async function searchLocation(item) {
+            logMessage("Searching locations...");
             clearAllActivities();
             addSearchInProgressActivity();
 
-            const response = await fetch("/api/search", {
+            const response = await fetch("/api/search/locations", {
                 method: "POST",
                 body: item.arguments,
                 headers: {
@@ -164,12 +164,12 @@
             }
         }
 
-        async function getReportFields(item) {
-            logMessage("Getting report information...");
+        async function getAvailableCars(item) {
+            logMessage("Searching cars...");
             clearAllActivities();
             addSearchInProgressActivity();
             
-            const response = await fetch("/api/report", {
+            const response = await fetch("/api/search/cars", {
                 method: "POST",
                 body: item.arguments,
                 headers: {
@@ -208,9 +208,7 @@
         async function submitreport(realtimeEvent) {
             logMessage("Submitting report...");
             clearAllActivities();
-            console.log("Submitting report with data:", realtimeEvent);
-
-            
+            console.log("Submitting report with data:", realtimeEvent);            
         }
 
         async function init(ephemeralKey) {
@@ -256,14 +254,51 @@
                 } else if (realtimeEvent.type === "response.output_item.done") {
                     if (realtimeEvent.item && realtimeEvent.item.type === "function_call") {
                         const item = realtimeEvent.item;
-                        if (item.name === "search") {                
-                            doSearch(item);
-                        }else if (item.name === "get_report_fields") {
-                            logMessage("Getting report information...");
+                        if (item.name === "search_locations") {                
+                            logMessage("Searching pickup locations...");
+                            clearAllActivities();
+                            addSearchInProgressActivity();
+
+                            const response = fetch("/api/search/locations", {
+                                method: "POST",
+                                body: item.arguments,
+                                headers: {
+                                    "Content-Type": "application/json"
+                                }
+                            });
+                            if (response.ok) {                    
+                                const searchResult = response.json();
+                                logMessage(searchResult);
+                                clearAllActivities();
+                                
+                                if (searchResult && searchResult.length > 0) {
+                                    searchResult.forEach((item) => {
+                                        addSearchResultActivity(item.sourcePage, item.content);
+                                    });
+                                }
+                                
+                                const chatResponse = {
+                                    type: "conversation.item.create",
+                                    item: {
+                                        type: "function_call_output",
+                                        call_id: item.call_id,
+                                        output: JSON.stringify(searchResult)
+                                    }
+                                };                
+                                window.dataChannel.send(JSON.stringify(chatResponse));
+
+                                setTimeout(() => {
+                                    window.dataChannel.send(JSON.stringify({
+                                        type: "response.create"
+                                    }));
+                                }, 100);    
+                            }
+                        }else if (item.name === "search_cars") {
+                            logMessage("Searching car information...");
                             clearAllActivities();
                             addSearchInProgressActivity();
                             
-                            const response = fetch("/api/report", {
+                            const response = fetch("/api/search/cars", {
                                 method: "POST",
                                 body: item.arguments,
                                 headers: {
@@ -333,40 +368,50 @@
             button.onclick = stopSession;
             document.body.appendChild(button);
 
+            prompt = `You are a helpful AI assistant responding in natural, engaging language.
+                "You should help the user to find a car rental location and available cars.
+                You should ask the user for the pickup location and then search for available cars at that location.
+                If the user provides a pickup location, you should search for available cars at that location. Ask the user for a location reference and then retrieve the closest locations with the search_locations tool.
+                If the user provides a car rental location, you should search for available cars at that location with the search_cars tool.
+                Help the user to find the suitable car and when done use the submit_report function to submit the report with the information gathered.
+                If a user value does not seem right ask the user for help to fix the mistake. 
+
+            `;
+
             // Send a client event to update the session
             function updateSession(dataChannel) {
                 const event = {
                     type: "session.update",
                     session: {
-                        instructions: "You are a helpful AI assistant responding in natural, engaging language. You should help the user to fill in their report after doing their work in a lab. First ask the user for the name of the report they need to fill out, then use the get_report_fields function to retrieve the fields for the report. Validate each response given by the user with the report metadata. If a user value does not seem right ask the user for help to fix the mistake. Finally, help the user fill out the report with the information gathered and once this is one submit the report with all fields using the submit_report function.",
+                        instructions: prompt,
                         tools: [{
                         type: "function",
-                        name: "search",
-                        description: "Search enterprise information",
+                        name: "search_locations",
+                        description: "Search pickup locations ",
                         parameters: {
                             type: "object",
                             properties: {
-                                searchKey: {
+                                search_location_reference: {
                                     type: "string",
-                                    description: "Search Key or phrase"
+                                    description: "Search locations by this reference"
                                 }
                             },
-                            required: ["searchKey"]
+                            required: ["search_location_reference"]
                         }
                     },
                     {
                         type: "function",
-                        name: "get_report_fields",
-                        description: "Retrieve the fields for a report to be filled out by the user",
+                        name: "search_cars",
+                        description: "Retrieve the available cars for the given location",
                         parameters: {
                             type: "object",
                             properties: {
-                                reportKey: {
+                                pickup_location: {
                                     type: "string",
-                                    description: "report description or name"
+                                    description: "Pickup location for the car rental"
                                 }
                             },
-                            required: ["reportKey"]
+                            required: ["pickup_location"]
                         }
                     },
                     {

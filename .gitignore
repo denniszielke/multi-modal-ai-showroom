@@ -26,7 +26,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 **/src/image/*.png
-**/*/cars/*.png
 **/.DS_Store
 
 # PyInstaller

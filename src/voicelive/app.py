@@ -6,8 +6,7 @@ from azure.core.credentials import AzureKeyCredential
 from azure.identity import AzureDeveloperCliCredential, DefaultAzureCredential
 from dotenv import load_dotenv
 
-from filedb import FileDBStore
-from reportstore import ReportStore
+from rentaldb import RentalDBStore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("webrtc")
@@ -19,14 +18,7 @@ llm_endpoint = os.environ.get("SMALL_ENDPOINT")
 llm_deployment = os.environ.get("SMALL_COMPLETION_MODEL")
 llm_api_version = os.environ.get("SMALL_API_VERSION")
 
-report_store = ReportStore()
-
-# fileDB = FileDBStore(
-#     endpoint=llm_endpoint,
-#     deployment=llm_deployment,
-#     api_version=llm_api_version
-# )
-
+rental_db = RentalDBStore()
 
 async def create_app():
     app = web.Application()
@@ -45,21 +37,20 @@ async def create_app():
 
     app.router.add_get('/', index)
     app.router.add_static('/static/', path=str(static_directory), name='static')
-    app.router.add_post("/api/search", search)
-    app.router.add_post("/api/report", get_report)
+    app.router.add_post("/api/search/locations", search_locations)
+    app.router.add_post("/api/search/cars", search_cars)
 
     return app
 
-async def search(request):
-    
-    return web.json_response(
-        "a device for testing adhesives is called a 'tensile tester'. It is used to measure the strength and elasticity of materials, including adhesives. Tensile testers apply a controlled force to a sample until it breaks, allowing for the assessment of adhesive properties such as tensile strength, elongation, and modulus of elasticity."
-    )
+async def search_locations(request):
+    input = await request.json()
+    locations = await rental_db.get_available_locations(input)
+    return web.json_response(locations)
 
-async def get_report(request):
-    report = await report_store.get_schema(request)
-    print (f"Retrieved report: {report}")
-    return web.json_response(report)
+async def search_cars(request):
+    input = await request.json()
+    cars = await rental_db.get_available_cars(input)
+    return web.json_response(cars)
 
 if __name__ == "__main__":
     host = os.environ.get("HOST", "localhost")
